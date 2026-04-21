@@ -5,7 +5,6 @@ import GoogleSignIn
 @main
 struct DailyFinanceApp: App {
 
-    // ✅ Connect AppDelegate
     @UIApplicationDelegateAdaptor(AppDelegate.self)
     var appDelegate
 
@@ -25,14 +24,26 @@ struct DailyFinanceApp: App {
         if !cd.categoriesExist() {
             cd.addDefaultCategories()
         }
+
+        // ✅ Pre-warm categories and usage cache on launch
+        // so AddTransactionView shows instantly with no "Loading..."
+        Task.detached(priority: .background) {
+            let controller = TransactionController.shared
+            await MainActor.run {
+                controller.loadCategories()
+            }
+            // Pre-fetch usage stats in background
+            // Result is cached in CoreData's in-memory context
+            _ = CoreDataManager.shared.fetchCategoryUsage(type: "expense")
+            _ = CoreDataManager.shared.fetchCategoryUsage(type: "income")
+            print("✅ Category cache warmed")
+        }
     }
 
     var body: some Scene {
         WindowGroup {
             Group {
                 if auth.isCheckingSession {
-                    // ✅ Show splash while checking session
-                    // Prevents login screen flash on launch
                     SplashView()
                 } else if auth.isLoggedIn {
                     MainTabView()
@@ -45,16 +56,9 @@ struct DailyFinanceApp: App {
             .onOpenURL { url in
                 GIDSignIn.sharedInstance.handle(url)
             }
-            // ✅ Apply accent color system-wide
             .tint(theme.accent)
-            .animation(
-                .easeInOut(duration: 0.25),
-                value: auth.isCheckingSession
-            )
-            .animation(
-                .easeInOut(duration: 0.25),
-                value: auth.isLoggedIn
-            )
+            .animation(.easeInOut(duration: 0.25), value: auth.isCheckingSession)
+            .animation(.easeInOut(duration: 0.25), value: auth.isLoggedIn)
         }
     }
 }

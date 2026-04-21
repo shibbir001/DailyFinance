@@ -43,7 +43,7 @@ struct DashboardView: View {
                     .padding(.horizontal)
                 }
 
-                floatingAddButton
+               
             }
             .navigationBarHidden(true)
             .sheet(isPresented: $showAddTransaction) {
@@ -275,23 +275,7 @@ struct DashboardView: View {
     }
 
     // MARK: - Floating Add Button
-    var floatingAddButton: some View {
-        Button {
-            transactionType    = "expense"
-            showAddTransaction = true
-        } label: {
-            Image(systemName: "plus")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-                .frame(width: 60, height: 60)
-                .background(Color.green)
-                .clipShape(Circle())
-                .shadow(color: .green.opacity(0.4), radius: 10)
-        }
-        .padding(.bottom, 20)
-    }
-
+    
     // MARK: - Helpers
     func greetingText() -> String {
         let hour = Calendar.current.component(.hour, from: Date())

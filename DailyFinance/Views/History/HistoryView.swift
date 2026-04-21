@@ -108,6 +108,7 @@ struct HistoryView: View {
             )
             .environmentObject(preferences)
             .onDisappear {
+                CoreDataManager.shared.deduplicateSummaries()
                 controller.loadMonthData()
             }
         }
@@ -357,6 +358,9 @@ struct HistoryView: View {
 }
 
 // MARK: - Category Bar Row
+// ✅ Replace the existing CategoryBarRow struct in HistoryView.swift
+// with this version — looks up icon from Core Data instead of
+// a tiny hardcoded map
 struct CategoryBarRow: View {
     var category: String
     var amount:   Double
@@ -367,13 +371,20 @@ struct CategoryBarRow: View {
         return (amount / total) * 100
     }
 
+    // ✅ Look up icon from CategoryEntity in Core Data
+    // Falls back to emoji map, then default card icon
     var icon: String {
-        let icons: [String: String] = [
-            "Food": "🍔", "Rent": "🏠", "Transport": "🚗",
-            "Health": "💊", "Shopping": "🛍️",
-            "Education": "📚", "Other": "📌"
-        ]
-        return icons[category] ?? "💳"
+        // Primary: fetch from Core Data (has all 44 default icons)
+        let cats = CoreDataManager.shared.fetchCategories(type: "expense")
+        if let match = cats.first(where: { $0.name == category }) {
+            return match.icon ?? "💳"
+        }
+        // Also check income categories
+        let incomeCats = CoreDataManager.shared.fetchCategories(type: "income")
+        if let match = incomeCats.first(where: { $0.name == category }) {
+            return match.icon ?? "💳"
+        }
+        return "💳"
     }
 
     var body: some View {

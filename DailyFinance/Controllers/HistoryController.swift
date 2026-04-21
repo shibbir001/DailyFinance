@@ -28,6 +28,22 @@ class HistoryController: ObservableObject {
         loadMonthData()
         observeFilters()
         observeICloudChanges()
+        observeTransactionEdits()   // ✅ new
+    }
+
+    // MARK: - Observe Transaction Edits
+    // ✅ EditTransactionView posts "TransactionEdited" after
+    // save or delete. We reload here so HistoryView list
+    // always reflects the latest amounts.
+    private func observeTransactionEdits() {
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("TransactionEdited"),
+            object:  nil,
+            queue:   .main
+        ) { [weak self] _ in
+            print("✏️ History reloading after transaction edit")
+            self?.loadMonthData()
+        }
     }
 
     // MARK: - Observe iCloud Changes
@@ -99,17 +115,17 @@ class HistoryController: ObservableObject {
                     .contains(searchText.lowercased())
             }
         }
+
+        // ✅ Force SwiftUI to see a NEW array even if the same
+        // objects are returned — this triggers @Published update
+        monthTransactions = []
         monthTransactions = filtered
 
         // ── Step 2: Calculate monthly summary ──────────
-        // ✅ Use DailySummaryEntity for correct totals
-        // This works even when individual transactions
-        // are not restored (only summaries from cloud)
         calculateMonthlySummaryFromSummaries()
     }
 
     // MARK: - Calculate from DailySummaryEntity
-    // ✅ Uses synced daily summaries — always correct!
     private func calculateMonthlySummaryFromSummaries() {
 
         let formatter        = DateFormatter()
@@ -122,6 +138,10 @@ class HistoryController: ObservableObject {
             .date(from: components) ?? Date()
         let monthKey  = formatter.string(from: monthDate)
 
+        // ✅ Deduplicate first — prevents doubling when
+        // iCloud sync delivers duplicate summary records
+        coreData.deduplicateSummaries()
+
         // Fetch all daily summaries for this month
         let allSummaries = coreData.fetchAllSummaries()
         let monthSummaries = allSummaries.filter { s in
@@ -129,24 +149,20 @@ class HistoryController: ObservableObject {
             return dateStr.hasPrefix(monthKey)
         }
 
-        // ✅ Sum from DailySummaryEntity (synced data)
         let totalIncome  = monthSummaries
             .reduce(0) { $0 + $1.totalIncome }
         let totalExpense = monthSummaries
             .reduce(0) { $0 + $1.totalExpense }
         let netBalance   = totalIncome - totalExpense
 
-        // If we have summary data use it
-        // Otherwise fall back to transactions
         if !monthSummaries.isEmpty {
             buildMonthlySummary(
-                totalIncome:  totalIncome,
-                totalExpense: totalExpense,
-                netBalance:   netBalance,
+                totalIncome:   totalIncome,
+                totalExpense:  totalExpense,
+                netBalance:    netBalance,
                 fromSummaries: monthSummaries
             )
         } else {
-            // No summaries — use transactions
             calculateMonthlySummaryFromTransactions()
         }
     }
@@ -158,8 +174,6 @@ class HistoryController: ObservableObject {
         netBalance:    Double,
         fromSummaries: [DailySummaryEntity]
     ) {
-        // For category breakdown use transactions
-        // (only available on device)
         let all = coreData.fetchTransactions(
             month: selectedMonth,
             year:  selectedYear
@@ -181,7 +195,6 @@ class HistoryController: ObservableObject {
             totalIncome:       totalIncome,
             totalExpense:      totalExpense,
             netBalance:        netBalance,
-            // ✅ Count days that have data
             transactionCount:  fromSummaries.count,
             expenseByCategory: expenseByCategory,
             incomeByCategory:  incomeByCategory
@@ -229,7 +242,6 @@ class HistoryController: ObservableObject {
 
     // MARK: - Load Calendar Data
     func loadCalendarData() {
-        // ✅ Debounce — wait 0.3s to batch rapid calls
         calendarDebounceTimer?.invalidate()
         calendarDebounceTimer = Timer.scheduledTimer(
             withTimeInterval: 0.3,

@@ -2,6 +2,7 @@
 import Foundation
 import Combine
 internal import CoreData
+import WidgetKit
 
 class TransactionController: ObservableObject {
 
@@ -85,6 +86,7 @@ class TransactionController: ObservableObject {
             date:     Date()
         )
         loadTodayData()
+        WidgetCenter.shared.reloadAllTimelines()
 
         // ✅ Sync summaries only (transactions via iCloud)
         if NetworkMonitor.shared.isConnected {
@@ -92,12 +94,16 @@ class TransactionController: ObservableObject {
                 await SyncService.shared.syncTodayData()
             }
         }
+        BudgetManager.shared.checkAfterTransaction(
+            category: category, type: type
+        )
     }
 
     // MARK: - Delete Transaction
     func deleteTransaction(_ tx: TransactionEntity) {
         coreData.deleteTransactionSmart(tx)
         loadTodayData()
+        WidgetCenter.shared.reloadAllTimelines()
 
         if NetworkMonitor.shared.isConnected {
             Task {

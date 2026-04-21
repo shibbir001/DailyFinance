@@ -3,7 +3,12 @@ import SwiftUI
 
 struct TransactionRowView: View {
 
-    var transaction: TransactionEntity
+    // ✅ @ObservedObject makes SwiftUI subscribe to this
+    // NSManagedObject directly. When amount, type, note,
+    // or category changes in Core Data, this row re-renders
+    // automatically — no notification or refreshID needed.
+    @ObservedObject var transaction: TransactionEntity
+
     // ✅ Live currency updates
     @EnvironmentObject private var preferences: UserPreferences
 
@@ -35,7 +40,6 @@ struct TransactionRowView: View {
 
             // Amount + Time
             VStack(alignment: .trailing, spacing: 4) {
-                // ✅ Uses preferences.symbol for currency
                 Text("\(transaction.type == "income" ? "+" : "-")\(preferences.format(transaction.amount))")
                     .font(.subheadline)
                     .fontWeight(.semibold)
@@ -53,19 +57,10 @@ struct TransactionRowView: View {
     }
 
     func categoryIcon(_ category: String) -> String {
-        let icons: [String: String] = [
-            "Salary":    "💰",
-            "Freelance": "💼",
-            "Business":  "📈",
-            "Food":      "🍔",
-            "Rent":      "🏠",
-            "Transport": "🚗",
-            "Health":    "💊",
-            "Shopping":  "🛍️",
-            "Education": "📚",
-            "Other":     "📌"
-        ]
-        return icons[category] ?? "💳"
+        // ✅ Look up from Core Data — covers all 44 categories
+        let all = CoreDataManager.shared.fetchCategories(type: "expense")
+                + CoreDataManager.shared.fetchCategories(type: "income")
+        return all.first(where: { $0.name == category })?.icon ?? "💳"
     }
 
     func formatTime(_ date: Date?) -> String {

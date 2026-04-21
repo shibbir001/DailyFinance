@@ -7,12 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		160380FF2F6ED65F006D8BD2 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 160380FE2F6ED65F006D8BD2 /* WidgetKit.framework */; };
+		160381012F6ED65F006D8BD2 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 160381002F6ED65F006D8BD2 /* SwiftUI.framework */; };
+		160381122F6ED660006D8BD2 /* DailyFinanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 160380FD2F6ED65F006D8BD2 /* DailyFinanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		161F7A482F5F03E800CA0250 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 161F7A472F5F03E800CA0250 /* Supabase */; };
 		16334CA02F67FC1F008082F9 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 16334C9F2F67FC1F008082F9 /* GoogleSignIn */; };
 		16334CA22F67FC2A008082F9 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 16334CA12F67FC2A008082F9 /* GoogleSignInSwift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		160381102F6ED660006D8BD2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 161F797D2F5EE4A400CA0250 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 160380FC2F6ED65F006D8BD2;
+			remoteInfo = DailyFinanceWidgetExtension;
+		};
 		161F79982F5EE4A500CA0250 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 161F797D2F5EE4A400CA0250 /* Project object */;
@@ -43,7 +53,25 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		160381172F6ED660006D8BD2 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				160381122F6ED660006D8BD2 /* DailyFinanceWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		160380FD2F6ED65F006D8BD2 /* DailyFinanceWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DailyFinanceWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		160380FE2F6ED65F006D8BD2 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		160381002F6ED65F006D8BD2 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		1603811C2F6ED7DE006D8BD2 /* DailyFinanceWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DailyFinanceWidgetExtension.entitlements; sourceTree = "<group>"; };
 		161F79852F5EE4A400CA0250 /* DailyFinance.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DailyFinance.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		161F79972F5EE4A500CA0250 /* DailyFinanceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DailyFinanceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		161F79A12F5EE4A500CA0250 /* DailyFinanceUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DailyFinanceUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -52,6 +80,20 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		160381162F6ED660006D8BD2 /* Exceptions for "DailyFinanceWidget" folder in "DailyFinanceWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 160380FC2F6ED65F006D8BD2 /* DailyFinanceWidgetExtension */;
+		};
+		1603811B2F6ED734006D8BD2 /* Exceptions for "DailyFinance" folder in "DailyFinanceWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/CoreData/DailyFinance.xcdatamodeld,
+			);
+			target = 160380FC2F6ED65F006D8BD2 /* DailyFinanceWidgetExtension */;
+		};
 		161F7A492F5F044B00CA0250 /* Exceptions for "DailyFinance" folder in "DailyFinance" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -62,10 +104,19 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		160381022F6ED65F006D8BD2 /* DailyFinanceWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				160381162F6ED660006D8BD2 /* Exceptions for "DailyFinanceWidget" folder in "DailyFinanceWidgetExtension" target */,
+			);
+			path = DailyFinanceWidget;
+			sourceTree = "<group>";
+		};
 		161F79872F5EE4A400CA0250 /* DailyFinance */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				161F7A492F5F044B00CA0250 /* Exceptions for "DailyFinance" folder in "DailyFinance" target */,
+				1603811B2F6ED734006D8BD2 /* Exceptions for "DailyFinance" folder in "DailyFinanceWidgetExtension" target */,
 			);
 			path = DailyFinance;
 			sourceTree = "<group>";
@@ -93,6 +144,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		160380FA2F6ED65F006D8BD2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				160381012F6ED65F006D8BD2 /* SwiftUI.framework in Frameworks */,
+				160380FF2F6ED65F006D8BD2 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		161F79822F5EE4A400CA0250 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -137,11 +197,13 @@
 		161F797C2F5EE4A400CA0250 = {
 			isa = PBXGroup;
 			children = (
+				1603811C2F6ED7DE006D8BD2 /* DailyFinanceWidgetExtension.entitlements */,
 				161F79872F5EE4A400CA0250 /* DailyFinance */,
 				161F799A2F5EE4A500CA0250 /* DailyFinanceTests */,
 				161F79A42F5EE4A500CA0250 /* DailyFinanceUITests */,
 				161F7A252F5EFD5100CA0250 /* DailyFinanceTest */,
 				161F7A322F5EFD7800CA0250 /* DailyFinanceTestui */,
+				160381022F6ED65F006D8BD2 /* DailyFinanceWidget */,
 				161F7A462F5F03E800CA0250 /* Frameworks */,
 				161F79862F5EE4A400CA0250 /* Products */,
 			);
@@ -155,6 +217,7 @@
 				161F79A12F5EE4A500CA0250 /* DailyFinanceUITests.xctest */,
 				161F7A242F5EFD5100CA0250 /* DailyFinanceTest.xctest */,
 				161F7A312F5EFD7800CA0250 /* DailyFinanceTestui.xctest */,
+				160380FD2F6ED65F006D8BD2 /* DailyFinanceWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -162,6 +225,8 @@
 		161F7A462F5F03E800CA0250 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				160380FE2F6ED65F006D8BD2 /* WidgetKit.framework */,
+				160381002F6ED65F006D8BD2 /* SwiftUI.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -169,6 +234,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		160380FC2F6ED65F006D8BD2 /* DailyFinanceWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 160381132F6ED660006D8BD2 /* Build configuration list for PBXNativeTarget "DailyFinanceWidgetExtension" */;
+			buildPhases = (
+				160380F92F6ED65F006D8BD2 /* Sources */,
+				160380FA2F6ED65F006D8BD2 /* Frameworks */,
+				160380FB2F6ED65F006D8BD2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				160381022F6ED65F006D8BD2 /* DailyFinanceWidget */,
+			);
+			name = DailyFinanceWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = DailyFinanceWidgetExtension;
+			productReference = 160380FD2F6ED65F006D8BD2 /* DailyFinanceWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		161F79842F5EE4A400CA0250 /* DailyFinance */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 161F79AB2F5EE4A500CA0250 /* Build configuration list for PBXNativeTarget "DailyFinance" */;
@@ -176,10 +263,12 @@
 				161F79812F5EE4A400CA0250 /* Sources */,
 				161F79822F5EE4A400CA0250 /* Frameworks */,
 				161F79832F5EE4A400CA0250 /* Resources */,
+				160381172F6ED660006D8BD2 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				160381112F6ED660006D8BD2 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				161F79872F5EE4A400CA0250 /* DailyFinance */,
@@ -296,6 +385,9 @@
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					160380FC2F6ED65F006D8BD2 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					161F79842F5EE4A400CA0250 = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -340,11 +432,19 @@
 				161F79A02F5EE4A500CA0250 /* DailyFinanceUITests */,
 				161F7A232F5EFD5100CA0250 /* DailyFinanceTest */,
 				161F7A302F5EFD7800CA0250 /* DailyFinanceTestui */,
+				160380FC2F6ED65F006D8BD2 /* DailyFinanceWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		160380FB2F6ED65F006D8BD2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		161F79832F5EE4A400CA0250 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -383,6 +483,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		160380F92F6ED65F006D8BD2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		161F79812F5EE4A400CA0250 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -421,6 +528,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		160381112F6ED660006D8BD2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 160380FC2F6ED65F006D8BD2 /* DailyFinanceWidgetExtension */;
+			targetProxy = 160381102F6ED660006D8BD2 /* PBXContainerItemProxy */;
+		};
 		161F79992F5EE4A500CA0250 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 161F79842F5EE4A400CA0250 /* DailyFinance */;
@@ -444,6 +556,70 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		160381142F6ED660006D8BD2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = DailyFinanceWidgetExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WMW8H924PH;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DailyFinanceWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DailyFinanceWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "shibbir-Daily-Finance.DailyFinanceWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		160381152F6ED660006D8BD2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = DailyFinanceWidgetExtension.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WMW8H924PH;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DailyFinanceWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DailyFinanceWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "shibbir-Daily-Finance.DailyFinanceWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		161F79A92F5EE4A500CA0250 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -571,6 +747,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DailyFinance/DailyFinance.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WMW8H924PH;
@@ -591,6 +768,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "shibbir-Daily-Finance";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -611,6 +789,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = DailyFinance/DailyFinance.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WMW8H924PH;
@@ -631,6 +810,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "shibbir-Daily-Finance";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -806,6 +986,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		160381132F6ED660006D8BD2 /* Build configuration list for PBXNativeTarget "DailyFinanceWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				160381142F6ED660006D8BD2 /* Debug */,
+				160381152F6ED660006D8BD2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		161F79802F5EE4A400CA0250 /* Build configuration list for PBXProject "DailyFinance" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

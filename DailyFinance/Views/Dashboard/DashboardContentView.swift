@@ -1,57 +1,71 @@
 // Views/Dashboard/DashboardContentView.swift
-// ✅ Renamed from DashboardView
-// DashboardView now just hosts the tab bar
 import SwiftUI
 internal import CoreData
 
 struct DashboardContentView: View {
 
-    // MARK: - Properties
-    @StateObject private var controller = TransactionController.shared
-    @StateObject private var auth       = AuthController.shared
-    @StateObject private var sync       = SyncService.shared
+    @StateObject private var controller    = TransactionController.shared
+    @StateObject private var auth          = AuthController.shared
+    @StateObject private var sync          = SyncService.shared
+    @StateObject private var budgetManager = BudgetManager.shared
     @EnvironmentObject private var preferences: UserPreferences
     @EnvironmentObject private var theme:       ThemeManager
 
-    @State private var showAddTransaction   = false
-    @State private var transactionType      = "expense"
-    @State private var editingTransaction:  TransactionEntity? = nil
-    @State private var refreshID:           UUID = UUID()
+    @State private var showAddTransaction  = false
+    @State private var transactionType     = "expense"
+    @State private var editingTransaction: TransactionEntity? = nil
+    @State private var refreshID:          UUID = UUID()
+    @State private var showWidgetPrompt:   Bool = false
 
-    // MARK: - Body
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
 
                 ZStack {
-                    Color(.systemGroupedBackground)
-                        .ignoresSafeArea()
-                    // ✅ Subtle theme tint on background
-                    theme.lightBg
-                        .ignoresSafeArea()
+                    Color(.systemGroupedBackground).ignoresSafeArea()
+                    theme.lightBg.ignoresSafeArea()
                 }
 
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 12) {
+
+                        // 1. Header
                         headerSection
-                        // ✅ Show iCloud error if any
+
+                        // 2. iCloud restore banner (fresh install only)
+                        if auth.isSyncingFromICloud {
+                            ICloudSyncBanner()
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+
+                        // 3. iCloud error (storage full etc.)
                         iCloudErrorBanner
-                        // ✅ Monthly expense chart first
+
+                        // 4. Monthly chart
                         MonthlyExpenseChartCard
                             .buildFromCoreData()
                             .environmentObject(preferences)
-                        balanceCard
-                    .id(refreshID)
-                        summaryCards
+
+                        // 5. Balance hero card (income/expense inside)
+                        balanceCard.id(refreshID)
+
+                        // 6. Add buttons
                         quickAddButtons
+
+                        // 7. Budget summary — collapsible
+                        BudgetSummaryCard()
+                            .environmentObject(preferences)
+                            .environmentObject(theme)
+
+                        // 9. Today's transactions
                         todayTransactionsList
-                        // ✅ Extra padding for tab bar
+
                         Color.clear.frame(height: 100)
                     }
                     .padding(.horizontal)
+                    .animation(.easeInOut(duration: 0.4),
+                               value: auth.isSyncingFromICloud)
                 }
-
-                floatingAddButton
             }
             .navigationBarHidden(true)
             #if DEBUG
@@ -59,7 +73,6 @@ struct DashboardContentView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         Task {
-                            print("🔄 Manual iCloud sync triggered")
                             await SyncService.shared.restoreAllData()
                             TransactionController.shared.loadTodayData()
                             NotificationCenter.default.post(
@@ -74,44 +87,39 @@ struct DashboardContentView: View {
                 }
             }
             #endif
-            // ✅ Refresh when iCloud pushes changes
-            .onReceive(
-                NotificationCenter.default.publisher(
-                    for: NSNotification.Name("iCloudDataChanged")
-                )
-            ) { _ in
-                print("☁️ Dashboard refreshing from iCloud")
+            .onReceive(NotificationCenter.default.publisher(
+                for: NSNotification.Name("iCloudDataChanged")
+            )) { _ in
                 controller.loadTodayData()
                 controller.loadCategories()
+                budgetManager.recalculateStatuses()
+                refreshID = UUID()  // ✅ force balance card re-render
             }
-            // ✅ Force re-render after edit/delete
-            .onReceive(
-                NotificationCenter.default.publisher(
-                    for: NSNotification.Name("TransactionEdited")
-                )
-            ) { _ in
+            .onReceive(NotificationCenter.default.publisher(
+                for: NSNotification.Name("TransactionEdited")
+            )) { _ in
                 controller.loadTodayData()
-                // ✅ Force SwiftUI to re-render entire view
+                budgetManager.recalculateStatuses()
                 refreshID = UUID()
             }
-            // ✅ Keep checking for 30s after login
-            // iCloud delivers transactions in batches
-            .onReceive(
-                NotificationCenter.default.publisher(
-                    for: NSNotification.Name("SessionRestored")
-                )
-            ) { _ in
-                // Poll every 5s for 30s after login
+            .onReceive(NotificationCenter.default.publisher(
+                for: NSNotification.Name("SessionRestored")
+            )) { _ in
+                budgetManager.loadBudgets()
                 for delay in [5.0, 10.0, 20.0, 30.0] {
-                    DispatchQueue.main.asyncAfter(
-                        deadline: .now() + delay
-                    ) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                         let count = CoreDataManager.shared
                             .fetchTransactions(for: Date()).count
-                        if count > 0 {
-                            print("📱 iCloud txs arrived after \(Int(delay))s: \(count)")
-                            controller.loadTodayData()
-                        }
+                        if count > 0 { controller.loadTodayData() }
+                    }
+                }
+            }
+            // ✅ Show widget prompt once on first ever app open
+            .onAppear {
+               
+                if !UserDefaults.standard.bool(forKey: "widgetPromptShown") {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        showWidgetPrompt = true
                     }
                 }
             }
@@ -120,41 +128,47 @@ struct DashboardContentView: View {
                     .environmentObject(preferences)
                     .environmentObject(theme)
                     .id(transactionType)
-                    .onDisappear { controller.loadTodayData() }
+                    .onDisappear {
+                        controller.loadTodayData()
+                        budgetManager.checkAfterTransaction(
+                            category: "",
+                            type: transactionType
+                        )
+                    }
             }
             .sheet(item: $editingTransaction) { tx in
                 EditTransactionView(transaction: tx)
                     .environmentObject(preferences)
                     .environmentObject(theme)
                     .onDisappear {
-                        // ✅ Force UI refresh after edit
                         DispatchQueue.main.async {
                             controller.loadTodayData()
+                            budgetManager.recalculateStatuses()
                             refreshID = UUID()
                         }
                     }
             }
+            // ✅ Widget onboarding prompt — shows once after first login
+            .sheet(isPresented: $showWidgetPrompt) {
+                WidgetPromptView()
+                    .environmentObject(theme)
+            }
         }
     }
 
-    // MARK: - Header Section
+    // MARK: - Header
     var headerSection: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(greetingText())
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.subheadline).foregroundColor(.secondary)
                 Text("My Finance")
-                    .font(.title2)
-                    .fontWeight(.bold)
+                    .font(.title2).fontWeight(.bold)
             }
-
             Spacer()
-
-            // Sync indicator
             Image(systemName: sync.isSyncing
-                ? "arrow.triangle.2.circlepath"
-                : "checkmark.icloud.fill")
+                  ? "arrow.triangle.2.circlepath"
+                  : "checkmark.icloud.fill")
                 .foregroundColor(sync.isSyncing ? .orange : theme.accent)
                 .font(.title3)
                 .symbolEffect(.rotate, isActive: sync.isSyncing)
@@ -162,113 +176,115 @@ struct DashboardContentView: View {
         .padding(.top, 10)
     }
 
-    // MARK: - Balance Card
+    // MARK: - Balance Card (with income/expense inside)
     var balanceCard: some View {
-        VStack(spacing: 8) {
-            Text(todayDateString())
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.8))
+        VStack(spacing: 0) {
 
-            Text("Today's Balance")
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.9))
-
-            Text(preferences.format(controller.todayBalanceAmount))
-                .font(.system(size: 42, weight: .bold))
-                .foregroundColor(.white)
-                .contentTransition(.numericText())
-
-            HStack {
-                Image(systemName: (controller.todayBalanceAmount >= 0)
-                    ? "arrow.up.circle.fill"
-                    : "arrow.down.circle.fill")
-                Text((controller.todayBalanceAmount >= 0) ? "Profit" : "Loss")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-            }
-            .foregroundColor(.white.opacity(0.9))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 6)
-            .background(.white.opacity(0.2))
-            .cornerRadius(20)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 30)
-        .background(
-            Group {
-                if (controller.todayBalanceAmount >= 0) {
-                    // ✅ Use theme gradient
-                    theme.gradient
-                } else {
-                    LinearGradient(
-                        colors: [Color.red, Color.orange],
-                        startPoint: .topLeading,
-                        endPoint:   .bottomTrailing
-                    )
+            // ── Top: net balance ───────────────────────
+            VStack(spacing: 4) {
+                Text(todayDateString())
+                    .font(.caption2).foregroundColor(.white.opacity(0.8))
+                Text("Today's Balance")
+                    .font(.caption).foregroundColor(.white.opacity(0.9))
+                Text(preferences.format(controller.todayBalanceAmount))
+                    .font(.system(size: 32, weight: .bold)).foregroundColor(.white)
+                    .contentTransition(.numericText())
+                HStack(spacing: 4) {
+                    Image(systemName: controller.todayBalanceAmount >= 0
+                          ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                        .font(.caption2)
+                    Text(controller.todayBalanceAmount >= 0 ? "Profit" : "Loss")
+                        .font(.caption2).fontWeight(.semibold)
                 }
+                .foregroundColor(.white.opacity(0.9))
+                .padding(.horizontal, 10).padding(.vertical, 4)
+                .background(.white.opacity(0.2)).cornerRadius(20)
             }
-        )
-        .cornerRadius(24)
-        .shadow(
-            color: (controller.todayBalanceAmount >= 0)
-                ? theme.accent.opacity(0.3)
-                : Color.red.opacity(0.3),
-            radius: 12
-        )
-    }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 16).padding(.bottom, 12)
 
-    // MARK: - Summary Cards
-    var summaryCards: some View {
-        HStack(spacing: 12) {
-            SummaryCardView(
-                title:  "Income",
-                amount: controller.todayIncomeAmount,
-                icon:   "arrow.down.circle.fill",
-                color:  theme.accent
-            )
-            .environmentObject(preferences)
+            // ── Divider ────────────────────────────────
+            Rectangle()
+                .fill(.white.opacity(0.25))
+                .frame(height: 0.5)
+                .padding(.horizontal, 20)
 
-            SummaryCardView(
-                title:  "Expenses",
-                amount: controller.todayExpenseAmount,
-                icon:   "arrow.up.circle.fill",
-                color:  .red
-            )
-            .environmentObject(preferences)
+            // ── Bottom: income / expense ───────────────
+            HStack(spacing: 0) {
+                VStack(spacing: 2) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.down.circle.fill").font(.caption2)
+                        Text("Income").font(.caption2)
+                    }
+                    .foregroundColor(.white.opacity(0.8))
+                    Text(preferences.format(controller.todayIncomeAmount))
+                        .font(.subheadline).fontWeight(.bold).foregroundColor(.white)
+                        .contentTransition(.numericText())
+                }
+                .frame(maxWidth: .infinity)
+
+                Rectangle()
+                    .fill(.white.opacity(0.25))
+                    .frame(width: 0.5, height: 32)
+
+                VStack(spacing: 2) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.up.circle.fill").font(.caption2)
+                        Text("Expense").font(.caption2)
+                    }
+                    .foregroundColor(.white.opacity(0.8))
+                    Text(preferences.format(controller.todayExpenseAmount))
+                        .font(.subheadline).fontWeight(.bold).foregroundColor(.white)
+                        .contentTransition(.numericText())
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.vertical, 12)
         }
+        .background(Group {
+            if controller.todayBalanceAmount >= 0 { theme.gradient }
+            else {
+                LinearGradient(
+                    colors: [.red, .orange],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        })
+        .cornerRadius(20)
+        .shadow(
+            color: controller.todayBalanceAmount >= 0
+                ? theme.accent.opacity(0.3) : .red.opacity(0.3),
+            radius: 10
+        )
     }
 
     // MARK: - Quick Add Buttons
     var quickAddButtons: some View {
         HStack(spacing: 12) {
             Button {
-                transactionType    = "income"
+                transactionType = "income"
                 showAddTransaction = true
             } label: {
-                HStack {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Add Income").fontWeight(.semibold)
+                HStack(spacing: 6) {
+                    Image(systemName: "plus.circle.fill").font(.subheadline)
+                    Text("Add Income").fontWeight(.semibold).font(.subheadline)
                 }
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(theme.accent)
-                .foregroundColor(.white)
-                .cornerRadius(14)
+                .padding(.vertical, 12)
+                .background(theme.accent).foregroundColor(.white).cornerRadius(12)
             }
-
             Button {
-                transactionType    = "expense"
+                transactionType = "expense"
                 showAddTransaction = true
             } label: {
-                HStack {
-                    Image(systemName: "minus.circle.fill")
-                    Text("Add Expense").fontWeight(.semibold)
+                HStack(spacing: 6) {
+                    Image(systemName: "minus.circle.fill").font(.subheadline)
+                    Text("Add Expense").fontWeight(.semibold).font(.subheadline)
                 }
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.red)
-                .foregroundColor(.white)
-                .cornerRadius(14)
+                .padding(.vertical, 12)
+                .background(Color.red).foregroundColor(.white).cornerRadius(12)
             }
         }
     }
@@ -278,60 +294,43 @@ struct DashboardContentView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Today's Transactions")
-                    .font(.headline)
-                    .fontWeight(.bold)
+                    .font(.headline).fontWeight(.bold)
                 Spacer()
                 Text("\(controller.todayTransactions.count) items")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(.caption).foregroundColor(.secondary)
             }
 
             if controller.todayTransactions.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "tray")
-                        .font(.system(size: 40))
-                        .foregroundColor(.secondary)
-                    Text("No transactions today")
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 40)).foregroundColor(.secondary)
+                    Text("No transactions today").foregroundColor(.secondary)
                     Text("Tap + to add your first one!")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.caption).foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
+                .frame(maxWidth: .infinity).padding(.vertical, 40)
             } else {
                 LazyVStack(spacing: 0) {
-                    ForEach(
-                        controller.todayTransactions,
-                        // ✅ Include amount+category in id
-                        // Forces re-render when transaction is edited
-                        id: \.objectID
-                    ) { transaction in
-                        TransactionRowView(transaction: transaction)
-                            .id("\(transaction.objectID)-\(transaction.amount)-\(transaction.category ?? "")")
+                    ForEach(controller.todayTransactions, id: \.objectID) { tx in
+                        TransactionRowView(transaction: tx)
+                            .id("\(tx.objectID)-\(tx.amount)-\(tx.category ?? "")")
                             .environmentObject(preferences)
-                            .padding(.vertical, 8)
-                            .padding(.horizontal)
+                            .padding(.vertical, 8).padding(.horizontal)
                             .background(Color(.systemBackground))
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) {
-                                    controller.deleteTransaction(transaction)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
+                                    controller.deleteTransaction(tx)
+                                    budgetManager.recalculateStatuses()
+                                } label: { Label("Delete", systemImage: "trash") }
                             }
                             .swipeActions(edge: .leading) {
-                                Button {
-                                    editingTransaction = transaction
-                                } label: {
+                                Button { editingTransaction = tx } label: {
                                     Label("Edit", systemImage: "pencil")
-                                }
-                                .tint(theme.accent)
+                                }.tint(theme.accent)
                             }
-                            .onTapGesture {
-                                editingTransaction = transaction
-                            }
-                        if transaction != controller.todayTransactions.last {
+                            .onTapGesture { editingTransaction = tx }
+
+                        if tx != controller.todayTransactions.last {
                             Divider().padding(.horizontal)
                         }
                     }
@@ -342,64 +341,29 @@ struct DashboardContentView: View {
         }
     }
 
-    // MARK: - Floating Add Button
-    var floatingAddButton: some View {
-        Button {
-            transactionType    = "expense"
-            showAddTransaction = true
-        } label: {
-            Image(systemName: "plus")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-                .frame(width: 60, height: 60)
-                .background(theme.accent)
-                .clipShape(Circle())
-                .shadow(color: theme.accent.opacity(0.4), radius: 10)
-        }
-        .padding(.bottom, 90) // ✅ above tab bar
-    }
-
     // MARK: - iCloud Error Banner
     @ViewBuilder
     var iCloudErrorBanner: some View {
         if let error = CoreDataManager.shared.iCloudError {
             HStack(spacing: 10) {
-                Image(systemName: error.icon)
-                    .foregroundColor(.white)
-
-                Text(error.message)
-                    .font(.caption)
-                    .foregroundColor(.white)
-                    .lineLimit(2)
-
+                Image(systemName: error.icon).foregroundColor(.white)
+                Text(error.message).font(.caption).foregroundColor(.white).lineLimit(2)
                 Spacer()
-
                 if case .storageFull = error {
                     Button("Fix") {
-                        if let url = URL(
-                            string: "App-Prefs:root=CASTLE"
-                        ) {
+                        if let url = URL(string: "App-Prefs:root=CASTLE") {
                             UIApplication.shared.open(url)
                         }
                     }
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(.orange)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(.white)
-                    .cornerRadius(10)
+                    .font(.caption).fontWeight(.bold).foregroundColor(.orange)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(.white).cornerRadius(10)
                 }
             }
             .padding()
-            .background(
-                error.icon == "icloud.slash.fill"
-                    ? Color.orange : Color.red
-            )
+            .background(error.icon == "icloud.slash.fill" ? Color.orange : Color.red)
             .cornerRadius(12)
-            .transition(.move(edge: .top)
-                .combined(with: .opacity))
+            .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
 
@@ -414,12 +378,7 @@ struct DashboardContentView: View {
     }
 
     func todayDateString() -> String {
-        let f        = DateFormatter()
-        f.dateFormat = "EEEE, MMM d yyyy"
+        let f = DateFormatter(); f.dateFormat = "EEEE, MMM d yyyy"
         return f.string(from: Date())
-    }
-
-    func formatCurrency(_ value: Double) -> String {
-        return preferences.format(value)
     }
 }

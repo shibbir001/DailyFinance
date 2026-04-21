@@ -3,18 +3,20 @@ import SwiftUI
 
 struct CategoryPickerView: View {
 
-    let type:             String
+    let type:              String
     @Binding var selected: String
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var theme: ThemeManager
 
-    @State private var searchText    = ""
-    @State private var showAddSheet  = false
+    @State private var searchText   = ""
+    @State private var showAddSheet = false
+    // ✅ Force re-render when categories load
+    @State private var refreshID:   UUID = UUID()
 
     private let coreData = CoreDataManager.shared
 
     var allCategories: [CategoryEntity] {
-        // ✅ Deduplicate by name — keep newest
+        _ = refreshID  // ✅ triggers re-evaluation when refreshID changes
         let all  = coreData.fetchCategories(type: type)
         var seen = Set<String>()
         var unique: [CategoryEntity] = []
@@ -61,10 +63,7 @@ struct CategoryPickerView: View {
                 result.append((title, cats))
             }
         }
-        // Custom categories not in any group
-        let custom = filtered.filter {
-            !usedNames.contains($0.name ?? "")
-        }
+        let custom = filtered.filter { !usedNames.contains($0.name ?? "") }
         if !custom.isEmpty {
             result.append(("⚡️ Custom", custom))
         }
@@ -73,47 +72,61 @@ struct CategoryPickerView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(sections, id: \.0) { title, cats in
-                    Section(title) {
-                        ForEach(cats, id: \.id) { cat in
-                            Button {
-                                selected = cat.name ?? ""
-                                dismiss()
-                            } label: {
-                                HStack(spacing: 14) {
-                                    Text(cat.icon ?? "📌")
-                                        .font(.title2)
-                                        .frame(width: 36)
-
-                                    Text(cat.name ?? "")
-                                        .foregroundColor(.primary)
-
-                                    Spacer()
-
-                                    if selected == cat.name {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundColor(theme.accent)
+            Group {
+                if allCategories.isEmpty {
+                    // ✅ Show placeholder while categories load
+                    VStack(spacing: 16) {
+                        Spacer()
+                        ProgressView()
+                        Text("Loading categories…")
+                            .font(.subheadline).foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    .onAppear {
+                        // Force reload and refresh
+                        TransactionController.shared.loadCategories()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            refreshID = UUID()
+                        }
+                    }
+                } else {
+                    List {
+                        ForEach(sections, id: \.0) { title, cats in
+                            Section(title) {
+                                ForEach(cats, id: \.id) { cat in
+                                    Button {
+                                        selected = cat.name ?? ""
+                                        dismiss()
+                                    } label: {
+                                        HStack(spacing: 14) {
+                                            Text(cat.icon ?? "📌")
+                                                .font(.title2)
+                                                .frame(width: 36)
+                                            Text(cat.name ?? "")
+                                                .foregroundColor(.primary)
+                                            Spacer()
+                                            if selected == cat.name {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundColor(theme.accent)
+                                            }
+                                        }
                                     }
                                 }
-                            }
-                        }
-                        .onDelete { idx in
-                            // Don't delete built-in categories
-                            let toDelete = idx.map { cats[$0] }
-                            toDelete.forEach {
-                                if !isBuiltIn($0.name ?? "") {
-                                    coreData.deleteCategory($0)
+                                .onDelete { idx in
+                                    let toDelete = idx.map { cats[$0] }
+                                    toDelete.forEach {
+                                        if !isBuiltIn($0.name ?? "") {
+                                            coreData.deleteCategory($0)
+                                            refreshID = UUID()
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-            .searchable(
-                text: $searchText,
-                prompt: "Search categories"
-            )
+            .searchable(text: $searchText, prompt: "Search categories")
             .navigationTitle("Choose Category")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -129,9 +142,16 @@ struct CategoryPickerView: View {
                     }
                 }
             }
+            .onAppear {
+                // ✅ Always refresh on appear
+                refreshID = UUID()
+            }
             .sheet(isPresented: $showAddSheet) {
                 AddCategoryView(type: type)
                     .environmentObject(theme)
+                    .onDisappear {
+                        refreshID = UUID()
+                    }
             }
         }
     }

@@ -8,13 +8,16 @@ struct CalendarDayView: View {
     var date: Date
     @Environment(\.dismiss) var dismiss
 
-    @State private var transactions:     [TransactionEntity] = []
-    @State private var showAddSheet:     Bool   = false
-    @State private var transactionType:  String = "expense"
-    @State private var deleteError:      String = ""
-    @State private var showDeleteError:  Bool   = false
-    // ✅ Forces summary card to re-read after add/delete
-    @State private var summaryRefreshID: UUID   = UUID()
+    @State private var transactions:      [TransactionEntity] = []
+    @State private var showAddSheet:      Bool              = false
+    @State private var transactionType:   String            = "expense"
+    @State private var deleteError:       String            = ""
+    @State private var showDeleteError:   Bool              = false
+    // ✅ Forces summary card to re-read after add/edit/delete
+    @State private var summaryRefreshID:  UUID              = UUID()
+    // ✅ Edit sheet state — same pattern as Dashboard
+    @State private var selectedTx:        TransactionEntity? = nil
+    @State private var showEditSheet:     Bool              = false
 
     @EnvironmentObject private var preferences: UserPreferences
     @EnvironmentObject private var theme:       ThemeManager
@@ -29,25 +32,20 @@ struct CalendarDayView: View {
 
     // ✅ ALWAYS use DailySummaryEntity for totals
     // summaryRefreshID forces SwiftUI to re-read
-    // after add/delete operations
+    // after add/edit/delete operations
     var dailySummary: DailySummaryEntity? {
         _ = summaryRefreshID  // ✅ triggers re-evaluation
         let formatter        = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
+        formatter.timeZone   = TimeZone.current  // ✅ always local timezone
         let dateStr          = formatter.string(from: date)
         return coreData.fetchDailySummary(for: dateStr)
     }
 
-    var totalIncome: Double {
-        return dailySummary?.totalIncome ?? 0
-    }
-
-    var totalExpense: Double {
-        return dailySummary?.totalExpense ?? 0
-    }
-
-    var netBalance: Double { totalIncome - totalExpense }
-    var isProfit:   Bool   { netBalance >= 0 }
+    var totalIncome:  Double { dailySummary?.totalIncome  ?? 0 }
+    var totalExpense: Double { dailySummary?.totalExpense ?? 0 }
+    var netBalance:   Double { totalIncome - totalExpense }
+    var isProfit:     Bool   { netBalance >= 0 }
 
     var isFutureDate: Bool {
         Calendar.current.startOfDay(for: date) >
@@ -67,7 +65,7 @@ struct CalendarDayView: View {
                         // MARK: Day Summary Card
                         daySummaryCard
 
-                        // MARK: Add Buttons
+                        // MARK: Add Buttons (past + today only)
                         if !isFutureDate {
                             addButtons
                         }
@@ -95,6 +93,13 @@ struct CalendarDayView: View {
                     for: NSNotification.Name("iCloudDataChanged")
                 )
             ) { _ in loadData() }
+            // ✅ Refresh when any edit completes (from EditTransactionView)
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: NSNotification.Name("TransactionEdited")
+                )
+            ) { _ in loadData() }
+            // MARK: Add Sheet
             .sheet(isPresented: $showAddSheet) {
                 AddTransactionView(
                     defaultType: transactionType,
@@ -105,8 +110,20 @@ struct CalendarDayView: View {
                 .id(transactionType)
                 .onDisappear {
                     loadData()
-                    // ✅ Sync after adding past transaction
                     syncAfterChange()
+                }
+            }
+            // MARK: Edit Sheet — same view the Dashboard uses
+            .sheet(isPresented: $showEditSheet) {
+                if let tx = selectedTx {
+                    EditTransactionView(transaction: tx)
+                        .environmentObject(preferences)
+                        .environmentObject(theme)
+                        .onDisappear {
+                            // ✅ Reload summary + list after edit/delete
+                            loadData()
+                            syncAfterChange()
+                        }
                 }
             }
             .alert("Delete Failed", isPresented: $showDeleteError) {
@@ -264,6 +281,15 @@ struct CalendarDayView: View {
                             .environmentObject(preferences)
                             .padding(.vertical, 8)
                             .padding(.horizontal)
+                            // ✅ Tap row to open EditTransactionView
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if !isFutureDate {
+                                    selectedTx    = tx
+                                    showEditSheet = true
+                                }
+                            }
+                            // ✅ Swipe left to delete (unchanged)
                             .swipeActions(
                                 edge: .trailing,
                                 allowsFullSwipe: true
@@ -275,6 +301,20 @@ struct CalendarDayView: View {
                                           systemImage: "trash")
                                 }
                             }
+                            // ✅ Swipe right to edit (bonus shortcut)
+                            .swipeActions(
+                                edge: .leading,
+                                allowsFullSwipe: false
+                            ) {
+                                Button {
+                                    selectedTx    = tx
+                                    showEditSheet = true
+                                } label: {
+                                    Label("Edit",
+                                          systemImage: "pencil")
+                                }
+                                .tint(.blue)
+                            }
 
                         if index < transactions.count - 1 {
                             Divider().padding(.horizontal)
@@ -284,6 +324,19 @@ struct CalendarDayView: View {
                 .background(Color(.systemBackground))
                 .cornerRadius(16)
                 .shadow(color: .black.opacity(0.05), radius: 6)
+
+                // ✅ Edit hint — only for past/today dates
+                if !isFutureDate {
+                    HStack(spacing: 4) {
+                        Image(systemName: "hand.tap.fill")
+                            .font(.caption2)
+                        Text("Tap a transaction to edit")
+                            .font(.caption2)
+                    }
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.top, 4)
+                }
             }
         }
     }
@@ -292,7 +345,7 @@ struct CalendarDayView: View {
     func loadData() {
         let fetched = coreData.fetchTransactions(for: date)
         DispatchQueue.main.async {
-            self.transactions     = fetched
+            self.transactions    = fetched
             // ✅ Force summary card to re-read from Core Data
             self.summaryRefreshID = UUID()
         }
@@ -308,7 +361,6 @@ struct CalendarDayView: View {
         let context = coreData.context
 
         // ✅ Capture objectID BEFORE touching array
-        // objectID is permanent and never invalidated
         let objectID = transactions[index].objectID
 
         print("🗑️ Attempting delete: \(objectID)")
@@ -316,7 +368,6 @@ struct CalendarDayView: View {
         // ✅ Remove from UI array first for instant feedback
         transactions.remove(at: index)
 
-        // ✅ Delete using smart subtract approach
         do {
             let object = try context
                 .existingObject(with: objectID)
@@ -327,7 +378,6 @@ struct CalendarDayView: View {
             // ✅ Smart delete — subtracts from summary
             coreData.deleteTransactionSmart(tx)
 
-            // ✅ Refresh UI and sync after delete
             DispatchQueue.main.async {
                 self.loadData()
             }
@@ -345,7 +395,6 @@ struct CalendarDayView: View {
     }
 
     // MARK: - Sync After Change
-    // ✅ Real-time sync — fires after every add/delete
     func syncAfterChange() {
         guard NetworkMonitor.shared.isConnected else {
             print("📵 Offline — change queued for later sync")
@@ -358,7 +407,7 @@ struct CalendarDayView: View {
         }
     }
 
-        // MARK: - Format Currency
+    // MARK: - Format Currency
     func formatCurrency(_ value: Double) -> String {
         return preferences.format(value)
     }

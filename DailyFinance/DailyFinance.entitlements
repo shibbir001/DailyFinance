@@ -21,5 +21,9 @@
 	<array>
 		<string>iCloud.shibbir-Daily-Finance</string>
 	</array>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.shibbir.DailyFinance</string>
+	</array>
 </dict>
 </plist>
